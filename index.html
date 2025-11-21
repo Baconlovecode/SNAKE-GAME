@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A modern, visually stunning snake game with smooth animations and premium design">
+    <title>Snake Game - Modern Classic</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header class="header">
+            <h1 class="title">
+                <span class="gradient-text">Snake</span> Game
+            </h1>
+            <p class="subtitle">Classic arcade gameplay reimagined</p>
+            <a href="https://github.com/yourusername/snake-game" target="_blank" class="source-btn"
+                title="View source code">
+                <span class="source-icon">💻</span>
+                <span>Source Code</span>
+            </a>
+        </header>
+
+        <div class="game-wrapper">
+            <div class="score-panel">
+                <div class="score-item">
+                    <span class="score-label">Score</span>
+                    <span class="score-value" id="score">0</span>
+                </div>
+                <div class="score-divider"></div>
+                <div class="score-item">
+                    <span class="score-label">High Score</span>
+                    <span class="score-value" id="highScore">0</span>
+                </div>
+                <div class="score-divider"></div>
+                <button class="audio-toggle" id="audioToggle" title="Toggle sound">
+                    <span class="audio-icon">🔊</span>
+                </button>
+                <div class="score-divider"></div>
+                <div class="ak47-status" id="ak47Status">
+                    <span class="ak47-icon">🔫</span>
+                    <span class="ak47-label" id="ak47Label">Locked</span>
+                    <span class="ak47-timer" id="ak47Timer"></span>
+                </div>
+            </div>
+
+            <div class="game-container">
+                <div class="ak47-prompt" id="ak47Prompt">
+                    <span class="prompt-icon">🔫</span>
+                    <span class="prompt-text">Press <kbd>F</kbd> to activate AK47!</span>
+                </div>
+                <canvas id="gameCanvas" width="400" height="400"></canvas>
+
+                <div class="game-overlay" id="gameOverlay">
+                    <div class="overlay-content">
+                        <h2 class="game-over-title">Game Over!</h2>
+                        <p class="final-score">Your Score: <span id="finalScore">0</span></p>
+                        <button class="restart-btn" id="restartBtn">
+                            <span>Play Again</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="start-overlay" id="startOverlay">
+                    <div class="overlay-content">
+                        <h2 class="start-title">Ready to Play?</h2>
+                        <p class="instructions">Use arrow keys to control the snake</p>
+                        <button class="start-btn" id="startBtn">
+                            <span>Start Game</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-info desktop-controls">
+                <div class="control-item">
+                    <kbd>↑ ↓ ← →</kbd>
+                    <span>or</span>
+                    <kbd>W A S D</kbd>
+                    <span>Move</span>
+                </div>
+                <div class="control-item">
+                    <kbd>Space</kbd>
+                    <span>Pause</span>
+                </div>
+                <div class="control-item">
+                    <kbd>F</kbd>
+                    <span>Activate AK47</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>
