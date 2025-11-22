@@ -30,13 +30,12 @@ let audioEnabled = true;
 let touchStartX = 0;
 let touchStartY = 0;
 
-// AK47 Power-up System
-let ak47State = 'LOCKED'; // LOCKED, READY, ACTIVE, COOLDOWN
-let ak47TimeRemaining = 0;
+// AK47 Power-up System (Auto-Navigation)
+let ak47State = 'LOCKED'; // LOCKED, UNLOCKED, COOLDOWN
 let ak47TimerInterval = null;
 let ak47CooldownRemaining = 0;
-let ak47ShotsRemaining = 0;
-let bullets = [];
+let ak47AmmoRemaining = 0;
+let autoNavActive = false;
 let lastTapTime = 0;
 const AK47_SHOTS_LIMIT = 5; // Auto-shoot at 5 apples
 const AK47_COOLDOWN = 300; // 5 minutes cooldown
@@ -238,22 +237,22 @@ function update() {
         createParticles(food.x, food.y);
         playSound('eat');
 
-        // Check if AK47 should be unlocked or activated
-        if (score >= AK47_UNLOCK_SCORE) {
-            if (ak47State === 'LOCKED') {
-                // First time unlock - auto activate
-                ak47State = 'ACTIVE';
-                ak47ShotsRemaining = AK47_SHOTS_LIMIT;
-                updateAK47Display();
-                playSound('unlock');
-            } else if (ak47State === 'ACTIVE' && ak47ShotsRemaining > 0) {
-                // Count down shots during active mode
-                ak47ShotsRemaining--;
-                if (ak47ShotsRemaining === 0) {
-                    // Out of shots, enter cooldown
-                    deactivateAK47();
-                }
-                updateAK47Display();
+        // Check if AK47 should be unlocked
+        if (score >= AK47_UNLOCK_SCORE && ak47State === 'LOCKED') {
+            ak47State = 'UNLOCKED';
+            ak47AmmoRemaining = AK47_SHOTS_LIMIT;
+            updateAK47Display();
+            playSound('unlock');
+        }
+
+        // If auto-nav is active and we reached the apple, decrement ammo
+        if (autoNavActive && ak47AmmoRemaining > 0) {
+            ak47AmmoRemaining--;
+            autoNavActive = false;
+            updateAK47Display();
+
+            if (ak47AmmoRemaining === 0) {
+                deactivateAK47();
             }
         }
 
@@ -267,9 +266,9 @@ function update() {
         snake.pop();
     }
 
-    // Update bullets if AK47 is active
-    if (ak47State === 'ACTIVE') {
-        updateBullets();
+    // Auto-navigation if active
+    if (autoNavActive && gameState === 'PLAYING') {
+        autoNavigateToApple();
     }
 
     // Update particles
@@ -599,7 +598,7 @@ function handleTouchEnd(e) {
 }
 
 function handleDirectionInput(dir) {
-    if (gameState !== 'PLAYING') return;
+    if (gameState !== 'PLAYING' || autoNavActive) return; // Don't allow manual input during auto-nav
 
     switch (dir) {
         case 'UP':
@@ -617,19 +616,47 @@ function handleDirectionInput(dir) {
     }
 }
 
-// ==== AK47 POWER-UP SYSTEM ====
+// ==== AK47 AUTO-NAVIGATION SYSTEM ====
 
-// Activate AK47 power-up
+// Auto-navigate snake toward apple
+function autoNavigateToApple() {
+    if (!autoNavActive || gameState !== 'PLAYING') return;
+
+    const head = snake[0];
+    const dx = food.x - head.x;
+    const dy = food.y - head.y;
+
+    // Simple pathfinding: prioritize larger distance
+    if (Math.abs(dx) > Math.abs(dy)) {
+        // Move horizontally
+        if (dx > 0 && direction !== 'LEFT') {
+            nextDirection = 'RIGHT';
+        } else if (dx < 0 && direction !== 'RIGHT') {
+            nextDirection = 'LEFT';
+        } else if (dy > 0 && direction !== 'UP') {
+            nextDirection = 'DOWN';
+        } else if (dy < 0 && direction !== 'DOWN') {
+            nextDirection = 'UP';
+        }
+    } else {
+        // Move vertically
+        if (dy > 0 && direction !== 'UP') {
+            nextDirection = 'DOWN';
+        } else if (dy < 0 && direction !== 'DOWN') {
+            nextDirection = 'UP';
+        } else if (dx > 0 && direction !== 'LEFT') {
+            nextDirection = 'RIGHT';
+        } else if (dx < 0 && direction !== 'RIGHT') {
+            nextDirection = 'LEFT';
+        }
+    }
+}
+
+// Activate AK47 auto-navigation
 function activateAK47() {
-    if (ak47State !== 'UNLOCKED' && ak47State !== 'LOCKED') return; // Allow auto-activate from LOCKED if condition met
+    if (ak47State !== 'UNLOCKED' || gameState !== 'PLAYING' || ak47AmmoRemaining <= 0 || autoNavActive) return;
 
-    ak47State = 'ACTIVE';
-    ak47ShotsRemaining = AK47_SHOTS_LIMIT;
-
-    // Clear any existing timers
-    if (ak47TimerInterval) clearInterval(ak47TimerInterval);
-
-    updateAK47Display();
+    autoNavActive = true;
     playSound('activate');
 }
 
@@ -637,7 +664,7 @@ function activateAK47() {
 function deactivateAK47() {
     ak47State = 'COOLDOWN';
     ak47CooldownRemaining = AK47_COOLDOWN;
-    bullets = [];
+    autoNavActive = false;
 
     // Start cooldown timer
     if (ak47TimerInterval) clearInterval(ak47TimerInterval);
@@ -648,6 +675,7 @@ function deactivateAK47() {
         if (ak47CooldownRemaining <= 0) {
             clearInterval(ak47TimerInterval);
             ak47State = 'LOCKED';
+            ak47AmmoRemaining = 0;
             updateAK47Display();
             playSound('unlock'); // Play sound when cooldown finishes
         }
@@ -672,17 +700,9 @@ function updateAK47Display() {
         ak47Prompt.classList.remove('show');
     } else if (ak47State === 'UNLOCKED') {
         ak47Status.classList.add('unlocked');
-        ak47Label.textContent = 'Ready!';
-        ak47Timer.textContent = '';
+        ak47Label.textContent = 'Auto-Nav';
+        ak47Timer.textContent = `${ak47AmmoRemaining} Ammo`;
         ak47Prompt.classList.add('show');
-    } else if (ak47State === 'ACTIVE') {
-        ak47Status.classList.add('active');
-        ak47Label.textContent = 'Active';
-        ak47Prompt.classList.remove('show');
-
-        // Show shots remaining
-        ak47Timer.textContent = `${ak47ShotsRemaining} Shots`;
-        ak47Timer.classList.remove('warning');
     } else if (ak47State === 'COOLDOWN') {
         ak47Status.classList.add('cooldown');
         ak47Label.textContent = 'Cooldown';
@@ -693,88 +713,4 @@ function updateAK47Display() {
         ak47Timer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         ak47Timer.classList.add('warning');
     }
-}
-
-// Create and shoot bullets
-function shootBullet() {
-    if (ak47State !== 'ACTIVE' || gameState !== 'PLAYING') return;
-
-    const head = snake[0];
-    bullets.push({
-        x: head.x * CONFIG.cellSize + CONFIG.cellSize / 2,
-        y: head.y * CONFIG.cellSize + CONFIG.cellSize / 2,
-        direction: direction,
-        speed: 8
-    });
-
-    playSound('shoot', 0.15);
-}
-
-// Update bullet positions and collisions
-function updateBullets() {
-    // Shoot a bullet every few frames
-    if (Math.random() < 0.1) {
-        shootBullet();
-    }
-
-    bullets.forEach((bullet, index) => {
-        // Move bullet
-        switch (bullet.direction) {
-            case 'UP':
-                bullet.y -= bullet.speed;
-                break;
-            case 'DOWN':
-                bullet.y += bullet.speed;
-                break;
-            case 'LEFT':
-                bullet.x -= bullet.speed;
-                break;
-            case 'RIGHT':
-                bullet.x += bullet.speed;
-                break;
-        }
-
-        // Check bullet collision with food
-        const bulletGridX = Math.floor(bullet.x / CONFIG.cellSize);
-        const bulletGridY = Math.floor(bullet.y / CONFIG.cellSize);
-
-        if (bulletGridX === food.x && bulletGridY === food.y) {
-            // Hit food!
-            score += CONFIG.foodPoints;
-            updateScoreDisplay();
-            generateFood();
-            createParticles(food.x, food.y);
-            playSound('eat');
-            bullets.splice(index, 1);
-
-            // Decrement shots
-            if (ak47State === 'ACTIVE') {
-                ak47ShotsRemaining--;
-                updateAK47Display();
-                if (ak47ShotsRemaining <= 0) {
-                    deactivateAK47();
-                }
-            }
-            return;
-        }
-
-        // Remove bullet if out of bounds
-        if (bulletGridX < 0 || bulletGridX >= CONFIG.gridSize ||
-            bulletGridY < 0 || bulletGridY >= CONFIG.gridSize) {
-            bullets.splice(index, 1);
-        }
-    });
-}
-
-// Draw bullets
-function drawBullets() {
-    bullets.forEach(bullet => {
-        ctx.fillStyle = '#ffff00';
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#ffff00';
-        ctx.beginPath();
-        ctx.arc(bullet.x, bullet.y, 3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-    });
 }
